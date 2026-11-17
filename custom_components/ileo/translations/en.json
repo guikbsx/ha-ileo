@@ -1,0 +1,55 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Iléo customer account",
+        "description": "Sign in with the credentials of your Iléo customer area (mel-ileo.fr).",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Iléo sign-in expired",
+        "description": "Enter the new password for {email}.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid credentials.",
+      "cannot_connect": "Unable to reach the Iléo portal.",
+      "unknown": "Unexpected response from the Iléo portal."
+    },
+    "abort": {
+      "already_configured": "This account is already configured.",
+      "reauth_successful": "Sign-in updated."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Water price",
+        "description": "Optional: water price used to build a cost statistic. An entity takes precedence over the fixed price.",
+        "data": {
+          "price": "Fixed price (€/m³)",
+          "price_entity": "Price entity (€/m³)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "index": {
+        "name": "Meter index"
+      },
+      "last_day_consumption": {
+        "name": "Last day consumption"
+      },
+      "last_reading_date": {
+        "name": "Last reading date"
+      }
+    }
+  }
+}

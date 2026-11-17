@@ -1,0 +1,55 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Espace client Iléo",
+        "description": "Connectez-vous avec les identifiants de votre espace client Iléo (mel-ileo.fr).",
+        "data": {
+          "email": "Adresse e-mail",
+          "password": "Mot de passe"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Connexion Iléo expirée",
+        "description": "Saisissez le nouveau mot de passe de {email}.",
+        "data": {
+          "password": "Mot de passe"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Identifiants invalides.",
+      "cannot_connect": "Impossible de joindre le portail Iléo.",
+      "unknown": "Réponse inattendue du portail Iléo."
+    },
+    "abort": {
+      "already_configured": "Ce compte est déjà configuré.",
+      "reauth_successful": "Connexion mise à jour."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Prix de l'eau",
+        "description": "Facultatif : prix de l'eau utilisé pour créer une statistique de coût. Une entité est prioritaire sur le prix fixe.",
+        "data": {
+          "price": "Prix fixe (€/m³)",
+          "price_entity": "Entité de prix (€/m³)"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "index": {
+        "name": "Index du compteur"
+      },
+      "last_day_consumption": {
+        "name": "Consommation du dernier jour"
+      },
+      "last_reading_date": {
+        "name": "Date du dernier relevé"
+      }
+    }
+  }
+}

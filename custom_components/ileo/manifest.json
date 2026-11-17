@@ -1,0 +1,14 @@
+{
+  "domain": "ileo",
+  "name": "Iléo (MEL)",
+  "codeowners": ["@guikbsx"],
+  "config_flow": true,
+  "dependencies": ["recorder"],
+  "documentation": "https://github.com/guikbsx/ha-ileo",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/guikbsx/ha-ileo/issues",
+  "loggers": ["custom_components.ileo"],
+  "requirements": [],
+  "version": "0.1.0"
+}

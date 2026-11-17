@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.DS_Store
+# Exports et captures réelles : ne jamais commiter de données personnelles
+*.har
+captures/

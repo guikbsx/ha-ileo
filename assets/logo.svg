@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Goutte d'eau contenant un histogramme">
+  <defs>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#41BDF5"/>
+      <stop offset="1" stop-color="#0B6FB8"/>
+    </linearGradient>
+  </defs>
+  <path d="M60 8C60 8 24 52 24 76a36 36 0 0 0 72 0C96 52 60 8 60 8Z" fill="url(#water)"/>
+  <g fill="#fff" fill-opacity=".94">
+    <rect x="40" y="74" width="9" height="18" rx="2.5"/>
+    <rect x="55.5" y="60" width="9" height="32" rx="2.5"/>
+    <rect x="71" y="80" width="9" height="12" rx="2.5"/>
+  </g>
+</svg>

@@ -7,6 +7,20 @@
         "data": {
           "email": "Email",
           "password": "Password"
+        },
+        "data_description": {
+          "email": "The email address of your mel-ileo.fr customer area.",
+          "password": "The password of your customer area. It is stored in the Home Assistant configuration."
+        }
+      },
+      "contract": {
+        "title": "Choose the contract",
+        "description": "This Iléo account has several contracts. Choose the one to follow; add the integration again to follow another one.",
+        "data": {
+          "contract": "Contract"
+        },
+        "data_description": {
+          "contract": "The number of the water contract, as shown in your customer area."
         }
       },
       "reauth_confirm": {
@@ -14,6 +28,9 @@
         "description": "Enter the new password for {email}.",
         "data": {
           "password": "Password"
+        },
+        "data_description": {
+          "password": "The current password of your mel-ileo.fr customer area."
         }
       }
     },
@@ -23,7 +40,7 @@
       "unknown": "Unexpected response from the Iléo portal."
     },
     "abort": {
-      "already_configured": "This account is already configured.",
+      "already_configured": "This contract is already configured.",
       "reauth_successful": "Sign-in updated."
     }
   },
@@ -35,8 +52,17 @@
         "data": {
           "price": "Fixed price (€/m³)",
           "price_entity": "Price entity (€/m³)"
+        },
+        "data_description": {
+          "price": "Price of one cubic metre of water, all taxes included.",
+          "price_entity": "Entity whose state is the price in €/m³. It takes precedence over the fixed price."
         }
       }
+    }
+  },
+  "device": {
+    "water_meter": {
+      "name": "Water meter"
     }
   },
   "entity": {
@@ -50,6 +76,17 @@
       "last_reading_date": {
         "name": "Last reading date"
       }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "The Iléo portal rejects the stored credentials."
+    },
+    "cannot_connect": {
+      "message": "Unable to reach the Iléo portal."
+    },
+    "unexpected_response": {
+      "message": "The Iléo portal returned an unexpected response."
     }
   }
 }

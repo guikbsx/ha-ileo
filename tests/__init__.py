@@ -1,1 +1,1 @@
-"""Tests de l'intégration Iléo."""
+"""Tests of the Iléo integration."""

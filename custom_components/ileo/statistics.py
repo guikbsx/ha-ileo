@@ -1,19 +1,19 @@
-"""Statistiques externes datées au jour réel de consommation.
+"""External statistics dated on the day the water was actually consumed.
 
-Les données Iléo arrivent avec environ deux jours de retard : un capteur classique
-attribuerait la consommation au jour de la récupération. On injecte donc des
-statistiques externes (`ileo:…`), une ligne par jour, horodatée à 00:00 (heure
-locale) du jour consommé, utilisables dans le tableau de bord Énergie.
+Iléo data is about two days late: a regular sensor would credit the consumption
+to the day it was fetched. So external statistics (`ileo:…`) are imported
+instead, one row per day, timestamped at 00:00 (local time) of the consumed
+day. They can be used in the Energy dashboard.
 
-Règles de calcul de la `sum` :
-- c'est le cumul des écarts d'index d'un jour sur l'autre, jamais l'index brut
-  (pas de pic au premier import) ;
-- un index qui recule (remplacement de compteur, correction) compte pour 0 et
-  sert de nouvelle base ;
-- le tout premier jour, sans index précédent, vaut la consommation fournie par
-  l'export si elle existe, sinon 0 ;
-- l'import est incrémental : on repart de la dernière statistique enregistrée et
-  on n'ajoute que les jours postérieurs, donc pas de doublon à la réinjection.
+How the `sum` is computed:
+- it is the running total of index differences from one day to the next, never
+  the raw index (no spike on the first import);
+- an index going backwards (meter replaced, correction) counts for 0 and
+  becomes the new baseline;
+- the very first day, with no previous index, is worth the consumption given by
+  the export if any, else 0;
+- the import is incremental: it resumes after the last recorded statistic and
+  only adds later days, so importing the same export twice creates no duplicate.
 """
 
 from __future__ import annotations
@@ -45,10 +45,17 @@ _LOGGER = logging.getLogger(__name__)
 
 CURRENCY = "EUR"
 
+# Statistic names are stored once in the database: they follow the language of
+# the instance at the time of the first import.
+_NAMES = {
+    "fr": ("Iléo {contract} – consommation d'eau", "Iléo {contract} – coût de l'eau"),
+}
+_DEFAULT_NAMES = ("Iléo {contract} water consumption", "Iléo {contract} water cost")
+
 
 @dataclass(frozen=True, slots=True)
 class DailyDelta:
-    """Consommation d'un jour, en litres, déduite des index."""
+    """Consumption of one day, in litres, derived from the indexes."""
 
     day: date
     index: float | None
@@ -57,7 +64,7 @@ class DailyDelta:
 
 @dataclass(frozen=True, slots=True)
 class LastStatistic:
-    """Dernière ligne enregistrée pour une statistique."""
+    """Last recorded row of a statistic."""
 
     day: date
     sum: float
@@ -67,10 +74,10 @@ class LastStatistic:
 def compute_daily_deltas(
     readings: Iterable[IleoReading], previous_index: float | None = None
 ) -> list[DailyDelta]:
-    """Calcule la consommation de chaque jour (litres, toujours >= 0).
+    """Compute the consumption of each day (litres, always >= 0).
 
-    `previous_index` est l'index connu avant le premier relevé (par exemple le
-    dernier index déjà importé), utilisé seulement pour le premier relevé.
+    `previous_index` is the index known before the first reading (for instance
+    the last imported index); it is only used for the first reading.
     """
     deltas: list[DailyDelta] = []
     base = previous_index
@@ -95,10 +102,10 @@ def build_statistics(
     factor: float = 1.0,
     include_state: bool = True,
 ) -> list[StatisticData]:
-    """Construit les lignes à importer après `last` (exclu).
+    """Build the rows to import after `last` (excluded).
 
-    `factor` convertit des litres vers l'unité de la statistique (1 pour des
-    litres, prix/1000 pour un coût en euros à partir d'un prix au m³).
+    `factor` converts litres to the unit of the statistic (1 for litres,
+    price/1000 for a cost in euros from a price per m³).
     """
     total = last.sum if last else 0.0
     rows: list[StatisticData] = []
@@ -116,10 +123,16 @@ def build_statistics(
     return rows
 
 
-def statistic_ids(account: str) -> tuple[str, str]:
-    """Identifiants (consommation, coût) des statistiques d'un compte."""
-    slug = slugify(account)
-    return f"{DOMAIN}:{slug}_consommation", f"{DOMAIN}:{slug}_cout"
+def statistic_ids(contract: str) -> tuple[str, str]:
+    """Return the (consumption, cost) statistic ids of a contract."""
+    slug = slugify(contract)
+    return f"{DOMAIN}:{slug}_water_consumption", f"{DOMAIN}:{slug}_water_cost"
+
+
+def statistic_names(contract: str, language: str) -> tuple[str, str]:
+    """Return the (consumption, cost) statistic names of a contract."""
+    names = _NAMES.get(language, _DEFAULT_NAMES)
+    return names[0].format(contract=contract), names[1].format(contract=contract)
 
 
 async def _async_last_statistic(
@@ -140,16 +153,16 @@ async def _async_last_statistic(
 async def async_import_statistics(
     hass: HomeAssistant,
     *,
-    account: str,
-    name: str,
+    contract: str,
     readings: Sequence[IleoReading],
     price_per_m3: float | None = None,
 ) -> list[DailyDelta]:
-    """Injecte les nouveaux jours dans les statistiques de consommation (et de coût).
+    """Import the new days into the consumption (and cost) statistics.
 
-    Retourne les consommations journalières calculées.
+    Returns the computed daily consumptions.
     """
-    consumption_id, cost_id = statistic_ids(account)
+    consumption_id, cost_id = statistic_ids(contract)
+    consumption_name, cost_name = statistic_names(contract, hass.config.language)
     tz = dt_util.get_default_time_zone()
 
     last = await _async_last_statistic(hass, consumption_id)
@@ -159,13 +172,13 @@ async def async_import_statistics(
         metadata = StatisticMetaData(
             mean_type=StatisticMeanType.NONE,
             has_sum=True,
-            name=f"{name} – consommation",
+            name=consumption_name,
             source=DOMAIN,
             statistic_id=consumption_id,
             unit_class=VolumeConverter.UNIT_CLASS,
             unit_of_measurement=UnitOfVolume.LITERS,
         )
-        _LOGGER.debug("Import de %s jours dans %s", len(rows), consumption_id)
+        _LOGGER.debug("Importing %s day(s) into %s", len(rows), consumption_id)
         async_add_external_statistics(hass, metadata, rows)
 
     if price_per_m3 is not None:
@@ -180,13 +193,13 @@ async def async_import_statistics(
             metadata = StatisticMetaData(
                 mean_type=StatisticMeanType.NONE,
                 has_sum=True,
-                name=f"{name} – coût",
+                name=cost_name,
                 source=DOMAIN,
                 statistic_id=cost_id,
                 unit_class=None,
                 unit_of_measurement=CURRENCY,
             )
-            _LOGGER.debug("Import de %s jours dans %s", len(rows), cost_id)
+            _LOGGER.debug("Importing %s day(s) into %s", len(rows), cost_id)
             async_add_external_statistics(hass, metadata, rows)
 
     return deltas

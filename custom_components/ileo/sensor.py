@@ -1,4 +1,4 @@
-"""Capteurs Iléo."""
+"""Sensors of the Iléo integration."""
 
 from __future__ import annotations
 
@@ -12,23 +12,21 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.const import UnitOfVolume
+from homeassistant.const import EntityCategory, UnitOfVolume
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .api import BASE_URL
-from .const import DOMAIN, MANUFACTURER
 from .coordinator import IleoConfigEntry, IleoCoordinator, IleoData
+from .entity import IleoEntity
 
+# The coordinator does all the fetching: entities never query the portal.
 PARALLEL_UPDATES = 0
 
 
 @dataclass(frozen=True, kw_only=True)
 class IleoSensorEntityDescription(SensorEntityDescription):
-    """Description d'un capteur Iléo."""
+    """Description of an Iléo sensor."""
 
     value_fn: Callable[[IleoData], StateType | date]
 
@@ -55,6 +53,7 @@ SENSORS: tuple[IleoSensorEntityDescription, ...] = (
         key="last_reading_date",
         translation_key="last_reading_date",
         device_class=SensorDeviceClass.DATE,
+        entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda data: data.latest.day if data.latest else None,
     ),
 )
@@ -65,31 +64,21 @@ async def async_setup_entry(
     entry: IleoConfigEntry,
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Ajoute les capteurs d'une entrée Iléo."""
+    """Add the sensors of an Iléo config entry."""
     coordinator = entry.runtime_data
     async_add_entities(IleoSensor(coordinator, description) for description in SENSORS)
 
 
-class IleoSensor(CoordinatorEntity[IleoCoordinator], SensorEntity):
-    """Capteur alimenté par le coordinateur Iléo."""
+class IleoSensor(IleoEntity, SensorEntity):
+    """Sensor fed by the Iléo coordinator."""
 
-    _attr_has_entity_name = True
     entity_description: IleoSensorEntityDescription
 
     def __init__(
         self, coordinator: IleoCoordinator, description: IleoSensorEntityDescription
     ) -> None:
-        super().__init__(coordinator)
+        super().__init__(coordinator, description.key)
         self.entity_description = description
-        entry = coordinator.config_entry
-        self._attr_unique_id = f"{entry.entry_id}_{description.key}"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, entry.entry_id)},
-            name="Compteur d'eau Iléo",
-            manufacturer=MANUFACTURER,
-            entry_type=DeviceEntryType.SERVICE,
-            configuration_url=BASE_URL,
-        )
 
     @property
     def native_value(self) -> StateType | date:

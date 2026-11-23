@@ -4,20 +4,19 @@ Intégration personnalisée [Home Assistant](https://www.home-assistant.io/) qui
 consommation d'eau depuis l'espace client [Iléo](https://www.mel-ileo.fr), le service de
 l'eau de la Métropole Européenne de Lille, pour les compteurs télérelevés.
 
-> [!WARNING]
-> **Statut : connexion Iléo à finaliser.**
-> Le cadre de l'intégration est prêt et testé (configuration, capteurs, statistiques,
-> lecture de l'export), mais la connexion au portail repose encore sur des **hypothèses** :
-> les noms des champs du formulaire de connexion et l'adresse de l'export n'ont pas encore
-> été relevés sur le vrai site. Tant que ce n'est pas fait, l'ajout de l'intégration
-> échouera très probablement avec « Identifiants invalides » ou « Réponse inattendue ».
-> Voir [Feuille de route](#feuille-de-route).
+> [!NOTE]
+> **Statut : connexion et export validés sur le vrai portail (novembre 2026).**
+> La connexion et le format de l'export ont été relevés sur mel-ileo.fr avec un compte
+> réel. L'intégration n'a pas encore tourné plusieurs jours dans une instance Home
+> Assistant : signalez tout comportement inattendu dans les issues.
 
 ## Fonctionnalités
 
 - Configuration depuis l'interface (adresse e-mail + mot de passe de l'espace client),
   avec ré-authentification quand le mot de passe change.
-- Récupération de l'export des consommations (6 derniers mois) **toutes les 12 heures** :
+- Une entrée par **contrat d'eau** : si le compte en a plusieurs, l'intégration demande
+  lequel suivre, et on l'ajoute une fois par contrat.
+- Récupération de l'export des consommations (jusqu'à 6 mois) **toutes les 12 heures** :
   les données Iléo arrivent avec environ deux jours de retard, inutile d'interroger plus
   souvent.
 - Capteurs :
@@ -28,8 +27,8 @@ l'eau de la Métropole Européenne de Lille, pour les compteurs télérelevés.
   | Date du dernier relevé | date | jour de consommation le plus récent |
 - **Statistiques externes datées au jour réel de consommation**, utilisables dans le
   tableau de bord Énergie (section Eau) :
-  - `ileo:<compte>_consommation` (litres) ;
-  - `ileo:<compte>_cout` (euros), si un prix de l'eau est configuré.
+  - `ileo:<contrat>_water_consumption` (litres) ;
+  - `ileo:<contrat>_water_cost` (euros), si un prix de l'eau est configuré.
 
 ### Comment sont calculées les statistiques
 
@@ -46,7 +45,7 @@ l'eau de la Métropole Européenne de Lille, pour les compteurs télérelevés.
   `unit_class: volume`.
 
 > [!TIP]
-> Dans le tableau de bord Énergie, choisissez la statistique **« … – consommation »**
+> Dans le tableau de bord Énergie, choisissez la statistique **« Iléo … – consommation d'eau »**
 > (source `ileo`) plutôt que le capteur « Index du compteur » : le capteur, lui, attribue la
 > consommation au moment de la récupération, avec deux jours de décalage.
 
@@ -69,6 +68,8 @@ Version minimale : Home Assistant 2026.10.
 
 1. **Paramètres → Appareils et services → Ajouter une intégration → Iléo (MEL)**.
 2. Saisissez l'adresse e-mail et le mot de passe de votre espace client mel-ileo.fr.
+3. Si le compte a plusieurs contrats, choisissez celui à suivre. Pour en suivre un autre,
+   ajoutez de nouveau l'intégration avec les mêmes identifiants.
 
 ### Options : prix de l'eau
 
@@ -82,19 +83,40 @@ obtenir la statistique de coût :
 
 Le prix est appliqué au moment de l'import (il n'y a pas de recalcul rétroactif).
 
+## Sécurité et confidentialité
+
+- **Destination unique.** L'intégration ne communique qu'avec `https://www.mel-ileo.fr`.
+  Toute redirection vers une autre adresse est refusée, et le mot de passe n'est envoyé
+  qu'au formulaire de connexion, jamais renvoyé lors d'une redirection.
+- **Stockage des identifiants.** L'adresse e-mail et le mot de passe sont enregistrés par
+  Home Assistant dans sa configuration (`.storage/core.config_entries`), **en clair**,
+  comme pour toute intégration : protégez l'accès à votre instance et à ses sauvegardes.
+- **Journaux et diagnostics.** Le mot de passe n'est jamais écrit dans les journaux. Le
+  fichier de diagnostics (menu ⋮ de l'intégration) masque l'adresse e-mail, le mot de
+  passe et le numéro de contrat, et ne contient aucun volume d'eau : il peut être joint à
+  un rapport de bug.
+- **Identifiant des statistiques.** Il contient le numéro de contrat
+  (`ileo:1234567_water_consumption`), jamais l'adresse e-mail : pensez-y tout de même
+  avant de partager une capture d'écran ou une configuration.
+- **Rapports de bug.** Ne publiez jamais dans une issue un export CSV, une capture réseau
+  (`.har`) ou une page de l'espace client : ils contiennent vos données personnelles.
+- **Signaler une faille.** N'ouvrez pas d'issue publique : utilisez le
+  [signalement privé de GitHub](https://github.com/guikbsx/ha-ileo/security/advisories/new)
+  (onglet *Security* → *Report a vulnerability*).
+
 ## Feuille de route
 
 - [x] Cadre de l'intégration (config flow, options, coordinateur, capteurs, traductions).
-- [x] Lecture de l'export CSV (format hypothétique, parseur tolérant).
+- [x] Lecture de l'export CSV (parseur tolérant aux variations de format).
 - [x] Statistiques externes de consommation et de coût, sans pic ni doublon.
-- [ ] **Rétro-ingénierie du portail** (site ASP.NET WebForms) :
-  - relever les champs du formulaire de `connexion.aspx` (identifiant, mot de passe,
-    bouton, champs cachés `__VIEWSTATE` / `__EVENTVALIDATION`) ;
-  - relever comment `espaceperso/mes-consommations.aspx` déclenche l'export (contrôle de
-    postback, champs de période) et le format exact du fichier (séparateur, colonnes,
-    unités, date = jour consommé ou jour du relevé) ;
-  - mettre à jour `IleoSiteConfig` dans `api.py`, le parseur si besoin, et remplacer les
-    fixtures de test hypothétiques par des exemples réels anonymisés.
+- [x] Rétro-ingénierie du portail : connexion (`email` / `password` sur `connexion.aspx`)
+  et export CSV (`mes-consommations.aspx?ex=1&dateDebut=…&dateFin=…`).
+- [ ] Vérifier que l'export respecte bien la période demandée sur un historique de
+  plusieurs mois (le compte de test n'avait que quelques jours de télérelève).
+- [x] Identification par numéro de contrat (statistiques, appareil, entrée).
+- [ ] Valider le changement de contrat sur un vrai compte à plusieurs contrats : il est
+  écrit d'après le sélecteur `switchAbt` du tableau de bord mais n'a pas pu être essayé.
+  Tant que le portail ne confirme pas le bon contrat, aucune donnée n'est importée.
 - [ ] Logo dans [home-assistant/brands](https://github.com/home-assistant/brands).
 
 ## Développement
@@ -110,15 +132,21 @@ Organisation du code (`custom_components/ileo/`) :
 
 | Fichier | Rôle |
 | --- | --- |
-| `api.py` | client du portail (connexion, export) — sans dépendance à Home Assistant |
-| `parser.py` | lecture de l'export CSV |
+| `api.py` | client du portail (connexion, contrats, export) — sans dépendance à Home Assistant |
+| `parser.py` | lecture de l'export CSV — sans dépendance à Home Assistant |
+| `models.py` | contrat, relevé journalier et exceptions du client |
 | `statistics.py` | calcul des consommations journalières et import des statistiques |
 | `coordinator.py` | mise à jour toutes les 12 h |
-| `config_flow.py` | configuration, ré-authentification et options |
+| `config_flow.py` | configuration, choix du contrat, ré-authentification et options |
+| `entity.py` | entité de base (appareil « Compteur d'eau ») |
 | `sensor.py` | capteurs |
+| `diagnostics.py` | diagnostics téléchargeables, données personnelles masquées |
 
-Les fichiers de `tests/fixtures/` sont **inventés** (voir leur README) en attendant des
-exemples réels.
+Le code, ses commentaires et ses journaux sont en anglais, comme le veut l'usage dans
+Home Assistant ; l'interface est traduite en français et en anglais.
+
+Les fixtures `tests/fixtures/` mêlent extraits réels anonymisés et fichiers synthétiques
+(voir leur README).
 
 ## Remerciements et licence
 

@@ -1,16 +1,29 @@
-"""Lecture de l'export CSV de consommation Iléo.
+"""Parsing of the Iléo consumption CSV export.
 
-⚠️ HYPOTHÈSE : le format exact de l'export n'a pas encore été observé (étape 2).
-Le parseur est donc volontairement tolérant :
+Format observed on the portal (November 2026), UTF-8, LF line endings:
 
-- séparateur `;`, tabulation ou `,` (détecté sur la ligne d'en-tête) ;
-- lignes de préambule ignorées jusqu'à trouver l'en-tête (une colonne « date »
-  et au moins une colonne « index » ou « consommation »/« volume ») ;
-- dates `JJ/MM/AAAA`, `JJ/MM/AA`, `JJ-MM-AAAA` ou `AAAA-MM-JJ` (heure éventuelle ignorée) ;
-- nombres à virgule ou à point, espaces de milliers acceptés ;
-- unité lue dans l'en-tête (`m3`, `m³`, `L`, `litres`), sinon valeurs par défaut
-  ci-dessous ;
-- plusieurs lignes pour le même jour : la dernière l'emporte.
+    date;consommation (litres);écoulement permanent (litres);index
+    2026-11-18;85; ;100000
+
+- `date`: day the water was consumed (YYYY-MM-DD);
+- `consommation`: volume of the day, in litres;
+- `écoulement permanent`: often empty (a single space), ignored;
+- `index`: meter index **in litres** at the end of the day, with no unit in the
+  header (index(D) − index(D−1) = consumption(D)).
+
+The parser stays tolerant to likely variations:
+
+- `;`, tab or `,` separator (detected on the header line);
+- preamble lines skipped until the header is found (a "date" column and at
+  least an "index" or "consommation"/"volume" column);
+- `DD/MM/YYYY`, `DD/MM/YY`, `DD-MM-YYYY` or `YYYY-MM-DD` dates (time ignored);
+- decimal comma or point, thousands spaces accepted;
+- unit read from the header (`m3`, `m³`, `L`, `litres`); an index without a
+  unit follows the consumption column, else the defaults below apply;
+- several lines for the same day: the last one wins.
+
+The export is external data: negative or non-finite values (`nan`, `inf`) are
+ignored, so that they can never reach the statistics.
 """
 
 from __future__ import annotations
@@ -18,22 +31,24 @@ from __future__ import annotations
 import csv
 from datetime import date, datetime
 import io
+import math
 import re
 import unicodedata
 
 from .models import IleoParseError, IleoReading
 
-# HYPOTHÈSE : unités utilisées quand l'en-tête ne les précise pas.
-DEFAULT_INDEX_FACTOR = 1000.0  # index exprimé en m³
-DEFAULT_CONSUMPTION_FACTOR = 1.0  # consommation exprimée en litres
+# Units assumed when the header does not give them (observed: litres for both).
+DEFAULT_INDEX_FACTOR = 1.0
+DEFAULT_CONSUMPTION_FACTOR = 1.0
 
 _DATE_FORMATS = ("%d/%m/%Y", "%d/%m/%y", "%d-%m-%Y", "%Y-%m-%d", "%Y/%m/%d")
 _CONSUMPTION_WORDS = ("consommation", "conso", "volume")
 _LITRE_RE = re.compile(r"(\(l\)|\blitres?\b|\bl\b)")
+_SPACES_RE = re.compile(r"[\s  ]")
 
 
 def decode_export(raw: bytes) -> str:
-    """Décode l'export (UTF-8 avec ou sans BOM, sinon Windows-1252)."""
+    """Decode the export (UTF-8 with or without BOM, else Windows-1252)."""
     try:
         return raw.decode("utf-8-sig")
     except UnicodeDecodeError:
@@ -41,30 +56,32 @@ def decode_export(raw: bytes) -> str:
 
 
 def _normalize(text: str) -> str:
-    """Minuscules, sans accents, `m³` → `m3`."""
+    """Lower case, without accents, `m³` → `m3`."""
     text = text.replace("³", "3").strip().lower()
     return "".join(
         c for c in unicodedata.normalize("NFKD", text) if not unicodedata.combining(c)
     )
 
 
-def _unit_factor(header: str, default: float) -> float:
+def _unit_factor(header: str) -> float | None:
+    """Factor to litres from the unit in the header, None if there is none."""
     if "m3" in header:
         return 1000.0
     if _LITRE_RE.search(header):
         return 1.0
-    return default
+    return None
 
 
 def _parse_number(value: str) -> float | None:
-    cleaned = re.sub(r"[\s  ]", "", value)
+    """Finite positive number, or None if the cell is empty or absurd."""
+    cleaned = _SPACES_RE.sub("", value)
     if not cleaned or cleaned in {"-", "--"}:
         return None
-    cleaned = cleaned.replace(",", ".")
     try:
-        return float(cleaned)
+        number = float(cleaned.replace(",", "."))
     except ValueError:
         return None
+    return number if math.isfinite(number) and number >= 0 else None
 
 
 def _parse_date(value: str) -> date | None:
@@ -101,7 +118,7 @@ def _is_header(cells: list[str]) -> bool:
 
 
 def parse_export_csv(text: str) -> list[IleoReading]:
-    """Transforme le texte de l'export en relevés journaliers triés par date."""
+    """Turn the export text into daily readings sorted by day."""
     lines = text.splitlines()
     header_pos: int | None = None
     delimiter = ";"
@@ -114,7 +131,7 @@ def parse_export_csv(text: str) -> list[IleoReading]:
             header_pos = pos
             break
     if header_pos is None:
-        raise IleoParseError("En-tête de l'export introuvable")
+        raise IleoParseError("Header of the export not found")
 
     reader = csv.reader(io.StringIO("\n".join(lines[header_pos:])), delimiter=delimiter)
     headers = [_normalize(h) for h in next(reader)]
@@ -129,16 +146,11 @@ def parse_export_csv(text: str) -> list[IleoReading]:
         ),
         None,
     )
-    index_factor = (
-        _unit_factor(headers[index_col], DEFAULT_INDEX_FACTOR)
-        if index_col is not None
-        else 1.0
-    )
-    conso_factor = (
-        _unit_factor(headers[conso_col], DEFAULT_CONSUMPTION_FACTOR)
-        if conso_col is not None
-        else 1.0
-    )
+    conso_unit = _unit_factor(headers[conso_col]) if conso_col is not None else None
+    index_unit = _unit_factor(headers[index_col]) if index_col is not None else None
+    conso_factor = conso_unit or DEFAULT_CONSUMPTION_FACTOR
+    # The real index header has no unit: it follows the consumption column.
+    index_factor = index_unit or conso_unit or DEFAULT_INDEX_FACTOR
 
     by_day: dict[date, IleoReading] = {}
     for row in reader:

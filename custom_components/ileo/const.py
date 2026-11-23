@@ -1,4 +1,4 @@
-"""Constantes de l'intégration Iléo."""
+"""Constants of the Iléo integration."""
 
 from __future__ import annotations
 
@@ -8,13 +8,17 @@ from typing import Final
 DOMAIN: Final = "ileo"
 MANUFACTURER: Final = "Iléo – Métropole Européenne de Lille"
 
+# Config entry data
+CONF_CONTRACT: Final = "contract"
+"""Number of the water contract followed by the config entry."""
+
 # Options
 CONF_PRICE: Final = "price"
-"""Prix fixe de l'eau en €/m³."""
+"""Fixed water price, in €/m³."""
 CONF_PRICE_ENTITY: Final = "price_entity"
-"""Entité fournissant le prix de l'eau en €/m³ (prioritaire sur le prix fixe)."""
+"""Entity providing the water price in €/m³ (takes precedence over the fixed price)."""
 
-# Les données Iléo arrivent avec ~2 jours de retard : inutile d'interroger souvent.
+# Iléo data is about two days late: polling more often would be pointless.
 UPDATE_INTERVAL: Final = timedelta(hours=12)
-# Profondeur de l'export demandé au portail (l'espace client propose ~6 mois).
+# Depth of the export requested from the portal (it offers about 6 months).
 HISTORY_DAYS: Final = 180

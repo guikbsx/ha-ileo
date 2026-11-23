@@ -1,4 +1,4 @@
-"""Fixtures communes."""
+"""Shared fixtures."""
 
 from __future__ import annotations
 
@@ -12,11 +12,15 @@ from homeassistant.core import HomeAssistant
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.ileo.const import DOMAIN
+from custom_components.ileo.const import CONF_CONTRACT, DOMAIN
+from custom_components.ileo.models import IleoContract, IleoReading
 from custom_components.ileo.parser import decode_export, parse_export_csv
 
 FIXTURES = Path(__file__).parent / "fixtures"
-EMAIL = "abonne@example.com"
+EMAIL = "subscriber@example.com"
+PASSWORD = "secret"
+CONTRACT = "1234567"
+OTHER_CONTRACT = "7654321"
 
 
 def load_fixture(name: str) -> str:
@@ -31,9 +35,9 @@ def load_fixture_bytes(name: str) -> bytes:
 def auto_enable_custom_integrations(
     recorder_mock: Recorder, enable_custom_integrations: None
 ) -> None:
-    """Recorder en mémoire (dépendance de l'intégration) et intégrations perso actives.
+    """In-memory recorder (a dependency of the integration) and custom integrations on.
 
-    `recorder_mock` doit être initialisé avant `hass`, d'où sa place ici.
+    `recorder_mock` must be set up before `hass`, hence its place here.
     """
 
 
@@ -46,24 +50,23 @@ async def paris(hass: HomeAssistant) -> None:
 def mock_entry() -> MockConfigEntry:
     return MockConfigEntry(
         domain=DOMAIN,
-        title=EMAIL,
-        unique_id=EMAIL,
-        data={CONF_EMAIL: EMAIL, CONF_PASSWORD: "secret"},
+        title=f"Iléo {CONTRACT}",
+        unique_id=CONTRACT,
+        data={CONF_EMAIL: EMAIL, CONF_PASSWORD: PASSWORD, CONF_CONTRACT: CONTRACT},
     )
 
 
 @pytest.fixture
-def hypothetical_readings():
-    """Relevés issus de l'export HYPOTHÉTIQUE."""
-    return parse_export_csv(
-        decode_export(load_fixture_bytes("export_hypothetique.csv"))
-    )
+def synthetic_readings() -> list[IleoReading]:
+    """Readings of the synthetic export (values chosen for the tests)."""
+    return parse_export_csv(decode_export(load_fixture_bytes("export_synthetic.csv")))
 
 
 @pytest.fixture
-def mock_client(hypothetical_readings) -> Generator[AsyncMock]:
-    """Remplace le client Iléo (aucun accès réseau)."""
+def mock_client(synthetic_readings: list[IleoReading]) -> Generator[AsyncMock]:
+    """Replace the Iléo client (no network access)."""
     with patch("custom_components.ileo.IleoClient", autospec=True) as client_cls:
         client = client_cls.return_value
-        client.async_get_readings.return_value = hypothetical_readings
+        client.async_login.return_value = [IleoContract(CONTRACT)]
+        client.async_get_readings.return_value = synthetic_readings
         yield client

@@ -7,6 +7,20 @@
         "data": {
           "email": "Adresse e-mail",
           "password": "Mot de passe"
+        },
+        "data_description": {
+          "email": "L'adresse e-mail de votre espace client mel-ileo.fr.",
+          "password": "Le mot de passe de votre espace client. Il est enregistré dans la configuration de Home Assistant."
+        }
+      },
+      "contract": {
+        "title": "Choix du contrat",
+        "description": "Ce compte Iléo a plusieurs contrats. Choisissez celui à suivre ; relancez l'ajout de l'intégration pour en suivre un autre.",
+        "data": {
+          "contract": "Contrat"
+        },
+        "data_description": {
+          "contract": "Le numéro du contrat d'eau, tel qu'affiché dans votre espace client."
         }
       },
       "reauth_confirm": {
@@ -14,6 +28,9 @@
         "description": "Saisissez le nouveau mot de passe de {email}.",
         "data": {
           "password": "Mot de passe"
+        },
+        "data_description": {
+          "password": "Le mot de passe actuel de votre espace client mel-ileo.fr."
         }
       }
     },
@@ -23,7 +40,7 @@
       "unknown": "Réponse inattendue du portail Iléo."
     },
     "abort": {
-      "already_configured": "Ce compte est déjà configuré.",
+      "already_configured": "Ce contrat est déjà configuré.",
       "reauth_successful": "Connexion mise à jour."
     }
   },
@@ -35,8 +52,17 @@
         "data": {
           "price": "Prix fixe (€/m³)",
           "price_entity": "Entité de prix (€/m³)"
+        },
+        "data_description": {
+          "price": "Prix d'un mètre cube d'eau, toutes taxes comprises.",
+          "price_entity": "Entité dont l'état est le prix en €/m³. Elle est prioritaire sur le prix fixe."
         }
       }
+    }
+  },
+  "device": {
+    "water_meter": {
+      "name": "Compteur d'eau"
     }
   },
   "entity": {
@@ -50,6 +76,17 @@
       "last_reading_date": {
         "name": "Date du dernier relevé"
       }
+    }
+  },
+  "exceptions": {
+    "auth_failed": {
+      "message": "Le portail Iléo refuse les identifiants enregistrés."
+    },
+    "cannot_connect": {
+      "message": "Impossible de joindre le portail Iléo."
+    },
+    "unexpected_response": {
+      "message": "Le portail Iléo a renvoyé une réponse inattendue."
     }
   }
 }

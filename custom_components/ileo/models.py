@@ -1,4 +1,4 @@
-"""Modèles de données et exceptions du client Iléo (sans dépendance à Home Assistant)."""
+"""Data models and exceptions of the Iléo client (no Home Assistant dependency)."""
 
 from __future__ import annotations
 
@@ -7,34 +7,43 @@ from datetime import date
 
 
 @dataclass(frozen=True, slots=True)
-class IleoReading:
-    """Un relevé journalier issu de l'export Iléo.
+class IleoContract:
+    """A water contract attached to an Iléo customer account."""
 
-    `day` est le jour de consommation. Les volumes sont exprimés en litres.
+    number: str
+    label: str = ""
+    """Name given to the contract by the subscriber, if any."""
+
+
+@dataclass(frozen=True, slots=True)
+class IleoReading:
+    """One daily reading from the Iléo export.
+
+    `day` is the day the water was consumed. Volumes are in litres.
     """
 
     day: date
     index: float | None = None
-    """Index du compteur en fin de journée, en litres."""
+    """Meter index at the end of the day, in litres."""
     consumption: float | None = None
-    """Consommation du jour telle que fournie par l'export, en litres."""
+    """Consumption of the day as given by the export, in litres."""
 
 
 class IleoError(Exception):
-    """Erreur générique du client Iléo."""
+    """Base error of the Iléo client."""
 
 
 class IleoConnectionError(IleoError):
-    """Le portail Iléo est injoignable ou a répondu par une erreur serveur."""
+    """The Iléo portal is unreachable or answered with a server error."""
 
 
 class IleoAuthError(IleoError):
-    """Identifiants refusés par le portail Iléo."""
+    """The Iléo portal rejected the credentials."""
 
 
 class IleoResponseError(IleoError):
-    """Le portail a répondu, mais pas avec ce qui était attendu."""
+    """The portal answered, but not with what was expected."""
 
 
 class IleoParseError(IleoResponseError):
-    """L'export de consommation n'a pas pu être interprété."""
+    """The consumption export could not be parsed."""

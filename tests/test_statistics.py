@@ -1,4 +1,4 @@
-"""Tests du calcul et de l'import des statistiques."""
+"""Tests of the statistics computation and import."""
 
 from __future__ import annotations
 
@@ -25,46 +25,47 @@ from custom_components.ileo.statistics import (
     build_statistics,
     compute_daily_deltas,
     statistic_ids,
+    statistic_names,
 )
 
 PARIS = ZoneInfo("Europe/Paris")
-ACCOUNT = "abonne@example.com"
+CONTRACT = "1234567"
 
 
 def _r(day: int, index: float | None = None, conso: float | None = None) -> IleoReading:
     return IleoReading(date(2026, 11, day), index=index, consumption=conso)
 
 
-# --- Calcul pur -------------------------------------------------------------
+# --- Pure computation ---------------------------------------------------------
 
 
-def test_premier_jour_sans_pic() -> None:
-    """Le premier jour ne vaut jamais l'index brut."""
+def test_first_day_without_spike() -> None:
+    """The first day is never worth the raw index."""
     deltas = compute_daily_deltas([_r(1, 123456), _r(2, 123701)])
     assert [d.delta for d in deltas] == [0.0, 245.0]
 
 
-def test_premier_jour_utilise_la_consommation_fournie() -> None:
+def test_first_day_uses_the_given_consumption() -> None:
     deltas = compute_daily_deltas([_r(1, 123456, 230), _r(2, 123701, 245)])
     assert [d.delta for d in deltas] == [230.0, 245.0]
 
 
-def test_index_qui_recule_ne_compte_pas() -> None:
+def test_index_going_backwards_counts_for_nothing() -> None:
     deltas = compute_daily_deltas([_r(1, 1000), _r(2, 1200), _r(3, 50), _r(4, 300)])
     assert [d.delta for d in deltas] == [0.0, 200.0, 0.0, 250.0]
 
 
-def test_index_precedent_connu() -> None:
+def test_known_previous_index() -> None:
     deltas = compute_daily_deltas([_r(3, 1500)], previous_index=1200)
     assert deltas == [DailyDelta(date(2026, 11, 3), 1500, 300.0)]
 
 
-def test_jour_sans_index() -> None:
+def test_day_without_index() -> None:
     deltas = compute_daily_deltas([_r(1, 1000), _r(2, None, 80), _r(3, 1200)])
     assert [d.delta for d in deltas] == [0.0, 80.0, 200.0]
 
 
-def test_build_statistics_cumul_et_minuit_local() -> None:
+def test_build_statistics_running_total_at_local_midnight() -> None:
     deltas = compute_daily_deltas([_r(1, 1000), _r(2, 1200), _r(3, 1500)])
     rows = build_statistics(deltas, tz=PARIS)
     assert [row["sum"] for row in rows] == [0.0, 200.0, 500.0]
@@ -72,7 +73,7 @@ def test_build_statistics_cumul_et_minuit_local() -> None:
     assert rows[1]["start"] == datetime(2026, 11, 2, tzinfo=PARIS)
 
 
-def test_build_statistics_reprend_apres_la_derniere_ligne() -> None:
+def test_build_statistics_resumes_after_the_last_row() -> None:
     deltas = compute_daily_deltas([_r(1, 1000), _r(2, 1200), _r(3, 1500)])
     rows = build_statistics(
         deltas, tz=PARIS, last=LastStatistic(date(2026, 11, 2), 900.0, 1200)
@@ -81,7 +82,7 @@ def test_build_statistics_reprend_apres_la_derniere_ligne() -> None:
     assert rows[0]["sum"] == 1200.0
 
 
-def test_build_statistics_cout() -> None:
+def test_build_statistics_cost() -> None:
     deltas = compute_daily_deltas([_r(1, 1000), _r(2, 3000)])
     rows = build_statistics(deltas, tz=PARIS, factor=4.5 / 1000, include_state=False)
     assert [row["sum"] for row in rows] == [0.0, 9.0]
@@ -89,13 +90,24 @@ def test_build_statistics_cout() -> None:
 
 
 def test_statistic_ids() -> None:
-    assert statistic_ids(ACCOUNT) == (
-        "ileo:abonne_example_com_consommation",
-        "ileo:abonne_example_com_cout",
+    assert statistic_ids(CONTRACT) == (
+        "ileo:1234567_water_consumption",
+        "ileo:1234567_water_cost",
     )
 
 
-# --- Import dans le recorder ------------------------------------------------
+def test_statistic_names() -> None:
+    assert statistic_names(CONTRACT, "fr") == (
+        "Iléo 1234567 – consommation d'eau",
+        "Iléo 1234567 – coût de l'eau",
+    )
+    assert statistic_names(CONTRACT, "de") == (
+        "Iléo 1234567 water consumption",
+        "Iléo 1234567 water cost",
+    )
+
+
+# --- Import into the recorder -------------------------------------------------
 
 
 async def _stats(hass: HomeAssistant, statistic_id: str) -> list[dict]:
@@ -114,14 +126,12 @@ async def _stats(hass: HomeAssistant, statistic_id: str) -> list[dict]:
 
 
 @pytest.mark.usefixtures("paris")
-async def test_import_sans_doublon_et_incremental(
-    recorder_mock: Recorder, hass: HomeAssistant, hypothetical_readings
+async def test_import_is_incremental_without_duplicates(
+    recorder_mock: Recorder, hass: HomeAssistant, synthetic_readings
 ) -> None:
-    consumption_id, cost_id = statistic_ids(ACCOUNT)
+    consumption_id, cost_id = statistic_ids(CONTRACT)
 
-    await async_import_statistics(
-        hass, account=ACCOUNT, name="Iléo", readings=hypothetical_readings
-    )
+    await async_import_statistics(hass, contract=CONTRACT, readings=synthetic_readings)
     first = await _stats(hass, consumption_id)
     assert [row["sum"] for row in first] == [0.0, 245.0, 494.0, 724.0, 956.0]
     assert first[0]["state"] == 123456.0
@@ -129,19 +139,17 @@ async def test_import_sans_doublon_et_incremental(
         2026, 11, 1, tzinfo=PARIS
     )
 
-    # Réinjection du même export : rien ne change.
-    await async_import_statistics(
-        hass, account=ACCOUNT, name="Iléo", readings=hypothetical_readings
-    )
+    # Importing the same export again changes nothing.
+    await async_import_statistics(hass, contract=CONTRACT, readings=synthetic_readings)
     assert await _stats(hass, consumption_id) == first
 
-    # Nouvel export glissant : seuls les nouveaux jours sont ajoutés.
-    newer = [*hypothetical_readings[2:], IleoReading(date(2026, 11, 6), 124600.0)]
-    await async_import_statistics(hass, account=ACCOUNT, name="Iléo", readings=newer)
+    # Newer sliding export: only the new days are added.
+    newer = [*synthetic_readings[2:], IleoReading(date(2026, 11, 6), 124600.0)]
+    await async_import_statistics(hass, contract=CONTRACT, readings=newer)
     rows = await _stats(hass, consumption_id)
     assert [row["sum"] for row in rows] == [0.0, 245.0, 494.0, 724.0, 956.0, 1144.0]
 
-    # Pas de prix : pas de statistique de coût.
+    # No price: no cost statistic.
     assert await _stats(hass, cost_id) == []
 
     metadata = await get_instance(hass).async_add_executor_job(
@@ -151,18 +159,18 @@ async def test_import_sans_doublon_et_incremental(
     assert metadata[0]["has_sum"] is True
     assert metadata[0]["mean_type"] == 0
     assert metadata[0]["unit_class"] == "volume"
+    assert metadata[0]["name"] == "Iléo 1234567 water consumption"
 
 
 @pytest.mark.usefixtures("paris")
-async def test_import_cout(
-    recorder_mock: Recorder, hass: HomeAssistant, hypothetical_readings
+async def test_import_cost(
+    recorder_mock: Recorder, hass: HomeAssistant, synthetic_readings
 ) -> None:
-    _, cost_id = statistic_ids(ACCOUNT)
+    _, cost_id = statistic_ids(CONTRACT)
     await async_import_statistics(
         hass,
-        account=ACCOUNT,
-        name="Iléo",
-        readings=hypothetical_readings,
+        contract=CONTRACT,
+        readings=synthetic_readings,
         price_per_m3=4.0,
     )
     rows = await _stats(hass, cost_id)
@@ -172,18 +180,18 @@ async def test_import_cout(
 
 
 @pytest.mark.usefixtures("paris")
-async def test_import_reprend_apres_une_longue_coupure(
+async def test_import_resumes_after_a_long_gap(
     recorder_mock: Recorder, hass: HomeAssistant
 ) -> None:
-    """Si l'export ne recouvre plus le dernier jour importé, l'index sert de base."""
-    consumption_id, _ = statistic_ids(ACCOUNT)
+    """If the export no longer overlaps the last imported day, its index is the baseline."""
+    consumption_id, _ = statistic_ids(CONTRACT)
     await async_import_statistics(
-        hass, account=ACCOUNT, name="Iléo", readings=[_r(1, 1000), _r(2, 1100)]
+        hass, contract=CONTRACT, readings=[_r(1, 1000), _r(2, 1100)]
     )
     await async_wait_recording_done(hass)
     later = date(2026, 11, 2) + timedelta(days=200)
     await async_import_statistics(
-        hass, account=ACCOUNT, name="Iléo", readings=[IleoReading(later, 9100.0)]
+        hass, contract=CONTRACT, readings=[IleoReading(later, 9100.0)]
     )
     rows = await _stats(hass, consumption_id)
     assert [row["sum"] for row in rows] == [0.0, 100.0, 8100.0]

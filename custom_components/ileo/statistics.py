@@ -165,8 +165,16 @@ async def async_import_statistics(
     consumption_name, cost_name = statistic_names(contract, hass.config.language)
     tz = dt_util.get_default_time_zone()
 
+    if not readings:
+        return []
+
     last = await _async_last_statistic(hass, consumption_id)
-    deltas = compute_daily_deltas(readings, last.state if last else None)
+    # The last imported index is a baseline only for readings that come after
+    # it. The export usually overlaps the days already imported: there, the
+    # first reading is older than that index and must not be compared with it.
+    first_day = min(reading.day for reading in readings)
+    previous_index = last.state if last and last.day < first_day else None
+    deltas = compute_daily_deltas(readings, previous_index)
 
     if rows := build_statistics(deltas, tz=tz, last=last):
         metadata = StatisticMetaData(

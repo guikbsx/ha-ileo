@@ -195,3 +195,35 @@ async def test_import_resumes_after_a_long_gap(
     )
     rows = await _stats(hass, consumption_id)
     assert [row["sum"] for row in rows] == [0.0, 100.0, 8100.0]
+
+
+@pytest.mark.usefixtures("paris")
+async def test_price_added_after_the_first_import(
+    recorder_mock: Recorder, hass: HomeAssistant
+) -> None:
+    """A cost statistic started later prices every day of the export, the first too.
+
+    The last imported index is a baseline only for readings that come after it:
+    used for an older reading, it would make that day worth nothing.
+    """
+    consumption_id, cost_id = statistic_ids(CONTRACT)
+    readings = [_r(1, 1000, 80), _r(2, 1200, 200), _r(3, 1500, 300)]
+
+    await async_import_statistics(hass, contract=CONTRACT, readings=readings)
+    assert [row["sum"] for row in await _stats(hass, consumption_id)] == [
+        80.0,
+        280.0,
+        580.0,
+    ]
+
+    deltas = await async_import_statistics(
+        hass, contract=CONTRACT, readings=readings, price_per_m3=4.0
+    )
+    assert [d.delta for d in deltas] == [80.0, 200.0, 300.0]
+    assert [row["sum"] for row in await _stats(hass, cost_id)] == pytest.approx(
+        [0.32, 1.12, 2.32]
+    )
+
+
+async def test_import_nothing(recorder_mock: Recorder, hass: HomeAssistant) -> None:
+    assert await async_import_statistics(hass, contract=CONTRACT, readings=[]) == []

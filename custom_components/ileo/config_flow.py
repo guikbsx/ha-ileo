@@ -28,7 +28,7 @@ from homeassistant.helpers.selector import (
     TextSelectorConfig,
     TextSelectorType,
 )
-import voluptuous as vol
+import probatio
 
 from .api import IleoClient
 from .const import CONF_CONTRACT, CONF_PRICE, CONF_PRICE_ENTITY, DOMAIN
@@ -44,16 +44,18 @@ _PASSWORD_SELECTOR = TextSelector(
     TextSelectorConfig(type=TextSelectorType.PASSWORD, autocomplete="current-password")
 )
 
-STEP_USER_SCHEMA = vol.Schema(
+STEP_USER_SCHEMA = probatio.Schema(
     {
-        vol.Required(CONF_EMAIL): _EMAIL_SELECTOR,
-        vol.Required(CONF_PASSWORD): _PASSWORD_SELECTOR,
+        probatio.Required(CONF_EMAIL): _EMAIL_SELECTOR,
+        probatio.Required(CONF_PASSWORD): _PASSWORD_SELECTOR,
     }
 )
-STEP_REAUTH_SCHEMA = vol.Schema({vol.Required(CONF_PASSWORD): _PASSWORD_SELECTOR})
-OPTIONS_SCHEMA = vol.Schema(
+STEP_REAUTH_SCHEMA = probatio.Schema(
+    {probatio.Required(CONF_PASSWORD): _PASSWORD_SELECTOR}
+)
+OPTIONS_SCHEMA = probatio.Schema(
     {
-        vol.Optional(CONF_PRICE): NumberSelector(
+        probatio.Optional(CONF_PRICE): NumberSelector(
             NumberSelectorConfig(
                 min=0,
                 max=100,
@@ -62,7 +64,7 @@ OPTIONS_SCHEMA = vol.Schema(
                 unit_of_measurement="€/m³",
             )
         ),
-        vol.Optional(CONF_PRICE_ENTITY): EntitySelector(
+        probatio.Optional(CONF_PRICE_ENTITY): EntitySelector(
             EntitySelectorConfig(domain=["sensor", "input_number", "number"])
         ),
     }
@@ -149,9 +151,9 @@ class IleoConfigFlow(ConfigFlow, domain=DOMAIN):
         ]
         return self.async_show_form(
             step_id="contract",
-            data_schema=vol.Schema(
+            data_schema=probatio.Schema(
                 {
-                    vol.Required(CONF_CONTRACT): SelectSelector(
+                    probatio.Required(CONF_CONTRACT): SelectSelector(
                         SelectSelectorConfig(
                             options=options, mode=SelectSelectorMode.LIST
                         )

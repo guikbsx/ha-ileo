@@ -18,4 +18,5 @@ jobs:
       - run: uv pip install -p .venv -r requirements_test.txt
       - run: .venv/bin/ruff format --check .
       - run: .venv/bin/ruff check .
+      - run: .venv/bin/mypy
       - run: .venv/bin/pytest -q -p no:sugar

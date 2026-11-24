@@ -232,10 +232,15 @@ uv venv -p 3.14 .venv
 uv pip install -p .venv -r requirements_test.txt
 .venv/bin/pytest
 .venv/bin/ruff check . && .venv/bin/ruff format --check .
+.venv/bin/mypy
 ```
 
 Le code, ses commentaires et ses journaux sont en anglais, comme le veut l'usage dans
 Home Assistant ; l'interface est traduite en français et en anglais.
+
+Pour publier une version : relever `version` dans `manifest.json` et `pyproject.toml`,
+pousser, attendre la CI, puis créer la publication GitHub `vX.Y.Z` sur ce commit. HACS
+propose alors ce numéro aux utilisateurs.
 
 <details>
 <summary><b>Organisation du code</b> (<code>custom_components/ileo/</code>)</summary>

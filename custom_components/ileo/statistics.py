@@ -23,7 +23,6 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, tzinfo
 import logging
 
-from homeassistant.components.recorder import get_instance
 from homeassistant.components.recorder.models import (
     StatisticData,
     StatisticMeanType,
@@ -35,6 +34,7 @@ from homeassistant.components.recorder.statistics import (
 )
 from homeassistant.const import UnitOfVolume
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.recorder import get_instance
 from homeassistant.util import dt as dt_util, slugify
 from homeassistant.util.unit_conversion import VolumeConverter
 

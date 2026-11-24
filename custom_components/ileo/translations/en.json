@@ -32,16 +32,30 @@
         "data_description": {
           "password": "The current password of your mel-ileo.fr customer area."
         }
+      },
+      "reconfigure": {
+        "title": "Change the Iléo sign-in",
+        "description": "Enter the credentials of the Iléo account that holds contract {contract}. Your statistics and sensors are kept.",
+        "data": {
+          "email": "Email",
+          "password": "Password"
+        },
+        "data_description": {
+          "email": "The email address of your mel-ileo.fr customer area.",
+          "password": "The password of your customer area. It is stored in the Home Assistant configuration."
+        }
       }
     },
     "error": {
       "invalid_auth": "Invalid credentials.",
       "cannot_connect": "Unable to reach the Iléo portal.",
-      "unknown": "Unexpected response from the Iléo portal."
+      "unknown": "Unexpected response from the Iléo portal.",
+      "contract_not_found": "This account does not hold the contract followed by this entry."
     },
     "abort": {
       "already_configured": "This contract is already configured.",
-      "reauth_successful": "Sign-in updated."
+      "reauth_successful": "Sign-in updated.",
+      "reconfigure_successful": "Sign-in updated."
     }
   },
   "options": {

@@ -46,6 +46,7 @@ from .models import (
     IleoAuthError,
     IleoConnectionError,
     IleoContract,
+    IleoContractError,
     IleoReading,
     IleoResponseError,
 )
@@ -214,7 +215,8 @@ class IleoClient:
         Raises `IleoAuthError` if the portal shows the sign-in form again, and
         `IleoResponseError` if it answers with anything but the customer area
         (a maintenance page, for instance) or if the expected contract cannot
-        be selected: without proof, the sign-in is not considered successful.
+        be selected (`IleoContractError` when the account does not have it):
+        without proof, the sign-in is not considered successful.
         """
         self._logged_in = False
         resp = await self._request(
@@ -254,7 +256,7 @@ class IleoClient:
         """
         wanted = self._contract
         if wanted not in {contract.number for contract in contracts}:
-            raise IleoResponseError("The contract is no longer attached to the account")
+            raise IleoContractError("The contract is not attached to the account")
         resp = await self._request("POST", url, data={CONTRACT_FIELD: wanted})
         _, selected = parse_contracts(resp.text)
         if selected != wanted:

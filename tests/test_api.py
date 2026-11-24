@@ -25,6 +25,7 @@ from custom_components.ileo.models import (
     IleoAuthError,
     IleoConnectionError,
     IleoContract,
+    IleoContractError,
     IleoResponseError,
 )
 
@@ -341,7 +342,7 @@ async def test_contract_no_longer_attached(
 ) -> None:
     _mock_login(aioclient_mock)
 
-    with pytest.raises(IleoResponseError):
+    with pytest.raises(IleoContractError):
         await make_client(OTHER_CONTRACT).async_login()
     assert len(_calls(aioclient_mock, "post")) == 1
 

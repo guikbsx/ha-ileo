@@ -45,5 +45,9 @@ class IleoResponseError(IleoError):
     """The portal answered, but not with what was expected."""
 
 
+class IleoContractError(IleoResponseError):
+    """The expected contract is not attached to the account."""
+
+
 class IleoParseError(IleoResponseError):
     """The consumption export could not be parsed."""

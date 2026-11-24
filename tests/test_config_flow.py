@@ -22,6 +22,7 @@ from custom_components.ileo.models import (
     IleoAuthError,
     IleoConnectionError,
     IleoContract,
+    IleoContractError,
     IleoResponseError,
 )
 
@@ -74,6 +75,7 @@ async def test_user_with_one_contract(hass: HomeAssistant) -> None:
     [
         (IleoAuthError, "invalid_auth"),
         (IleoConnectionError, "cannot_connect"),
+        (IleoContractError, "contract_not_found"),
         (IleoResponseError, "unknown"),
     ],
 )
@@ -172,6 +174,48 @@ async def test_reauth(
     assert result["reason"] == "reauth_successful"
     assert mock_entry.data[CONF_PASSWORD] == "new"
     # The new password is checked against the contract of the entry.
+    assert mock_login.call_args.args[0]._contract == CONTRACT
+
+
+@pytest.mark.usefixtures("mock_setup")
+async def test_reconfigure(
+    hass: HomeAssistant, mock_login: AsyncMock, mock_entry: MockConfigEntry
+) -> None:
+    """The credentials can be changed at will, as long as the contract follows."""
+    mock_entry.add_to_hass(hass)
+    result = await mock_entry.start_reconfigure_flow(hass)
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "reconfigure"
+    assert result["description_placeholders"] == {"contract": CONTRACT}
+
+    # Another account, which does not hold the contract of the entry: refused,
+    # so the statistics never start following another meter.
+    mock_login.side_effect = IleoContractError
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_EMAIL: "other@example.com", CONF_PASSWORD: "other"}
+    )
+    assert result["errors"] == {"base": "contract_not_found"}
+    assert mock_entry.data[CONF_EMAIL] == EMAIL
+
+    mock_login.side_effect = IleoAuthError
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_EMAIL: "new@example.com", CONF_PASSWORD: "wrong"}
+    )
+    assert result["errors"] == {"base": "invalid_auth"}
+
+    mock_login.side_effect = None
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {CONF_EMAIL: " New@Example.com ", CONF_PASSWORD: "new"}
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    assert mock_entry.data == {
+        CONF_EMAIL: "new@example.com",
+        CONF_PASSWORD: "new",
+        CONF_CONTRACT: CONTRACT,
+    }
+    assert mock_entry.unique_id == CONTRACT
+    # The new credentials were checked against the contract of the entry.
     assert mock_login.call_args.args[0]._contract == CONTRACT
 
 

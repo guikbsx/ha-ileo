@@ -32,16 +32,30 @@
         "data_description": {
           "password": "Le mot de passe actuel de votre espace client mel-ileo.fr."
         }
+      },
+      "reconfigure": {
+        "title": "Modifier la connexion Iléo",
+        "description": "Saisissez les identifiants du compte Iléo qui porte le contrat {contract}. Vos statistiques et vos capteurs sont conservés.",
+        "data": {
+          "email": "Adresse e-mail",
+          "password": "Mot de passe"
+        },
+        "data_description": {
+          "email": "L'adresse e-mail de votre espace client mel-ileo.fr.",
+          "password": "Le mot de passe de votre espace client. Il est enregistré dans la configuration de Home Assistant."
+        }
       }
     },
     "error": {
       "invalid_auth": "Identifiants invalides.",
       "cannot_connect": "Impossible de joindre le portail Iléo.",
-      "unknown": "Réponse inattendue du portail Iléo."
+      "unknown": "Réponse inattendue du portail Iléo.",
+      "contract_not_found": "Ce compte ne porte pas le contrat suivi par cette entrée."
     },
     "abort": {
       "already_configured": "Ce contrat est déjà configuré.",
-      "reauth_successful": "Connexion mise à jour."
+      "reauth_successful": "Connexion mise à jour.",
+      "reconfigure_successful": "Connexion mise à jour."
     }
   },
   "options": {

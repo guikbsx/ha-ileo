@@ -135,7 +135,10 @@ configuration Home Assistant, puis redémarrez.
 3. Si le compte a plusieurs contrats, choisissez celui à suivre. Pour en suivre un autre,
    ajoutez de nouveau l'intégration avec les mêmes identifiants.
 
-Si vous changez de mot de passe chez Iléo, Home Assistant vous demandera le nouveau.
+Si vous changez de mot de passe chez Iléo, Home Assistant vous demandera le nouveau. Pour
+changer d'adresse e-mail ou de mot de passe de vous-même, utilisez **Reconfigurer** dans
+le menu ⋮ de l'intégration : vos statistiques et vos capteurs sont conservés, à condition
+que le compte porte le même contrat.
 
 ### Prix de l'eau (facultatif)
 
@@ -222,6 +225,7 @@ L'intégration alimente deux statistiques externes, utilisables dans le tableau 
 - [ ] Valider le changement de contrat sur un vrai compte à plusieurs contrats : il est
   écrit d'après le sélecteur `switchAbt` du tableau de bord mais n'a pas pu être essayé.
   Tant que le portail ne confirme pas le bon contrat, aucune donnée n'est importée.
+- [x] Reconfiguration des identifiants sans supprimer l'intégration.
 - [x] Icône de l'intégration dans Home Assistant (dossier `brand/`, Home Assistant 2026.3 ou
   ultérieur).
 

@@ -33,7 +33,13 @@ import probatio
 from .api import IleoClient
 from .const import CONF_CONTRACT, CONF_PRICE, CONF_PRICE_ENTITY, DOMAIN
 from .coordinator import IleoConfigEntry
-from .models import IleoAuthError, IleoConnectionError, IleoContract, IleoError
+from .models import (
+    IleoAuthError,
+    IleoConnectionError,
+    IleoContract,
+    IleoContractError,
+    IleoError,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -86,6 +92,8 @@ async def _async_login(
         return [], {"base": "invalid_auth"}
     except IleoConnectionError:
         return [], {"base": "cannot_connect"}
+    except IleoContractError:
+        return [], {"base": "contract_not_found"}
     except IleoError:
         _LOGGER.exception("Unexpected response from the Iléo portal")
         return [], {"base": "unknown"}
@@ -196,6 +204,37 @@ class IleoConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="reauth_confirm",
             data_schema=STEP_REAUTH_SCHEMA,
             description_placeholders={"email": entry.data[CONF_EMAIL]},
+            errors=errors,
+        )
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Change the credentials of an entry, for the same contract.
+
+        The new account must hold the contract of the entry: its statistics
+        and entities are keyed by that contract and must not start following
+        another meter.
+        """
+        entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            email = user_input[CONF_EMAIL].strip().lower()
+            password = user_input[CONF_PASSWORD]
+            _, errors = await _async_login(
+                self.hass, email, password, entry.data[CONF_CONTRACT]
+            )
+            if not errors:
+                return self.async_update_reload_and_abort(
+                    entry, data_updates={CONF_EMAIL: email, CONF_PASSWORD: password}
+                )
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=self.add_suggested_values_to_schema(
+                STEP_USER_SCHEMA,
+                {CONF_EMAIL: (user_input or entry.data).get(CONF_EMAIL)},
+            ),
+            description_placeholders={"contract": entry.data[CONF_CONTRACT]},
             errors=errors,
         )
 

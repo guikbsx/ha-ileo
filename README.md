@@ -13,6 +13,7 @@ jour par jour, jusque dans le tableau de bord Énergie.**
 [![Home Assistant](https://img.shields.io/badge/Home_Assistant-2026.10+-18BCF2?logo=homeassistant&logoColor=white)](https://www.home-assistant.io)
 [![Licence MIT](https://img.shields.io/github/license/guikbsx/ha-ileo?label=licence)](LICENSE)
 
+[**ha.ileo.guik.io**](https://ha.ileo.guik.io) ·
 [Installation](#installation) ·
 [Configuration](#configuration) ·
 [Statistiques](#statistiques) ·
@@ -221,7 +222,8 @@ L'intégration alimente deux statistiques externes, utilisables dans le tableau 
 - [ ] Valider le changement de contrat sur un vrai compte à plusieurs contrats : il est
   écrit d'après le sélecteur `switchAbt` du tableau de bord mais n'a pas pu être essayé.
   Tant que le portail ne confirme pas le bon contrat, aucune donnée n'est importée.
-- [ ] Logo dans [home-assistant/brands](https://github.com/home-assistant/brands).
+- [x] Icône de l'intégration dans Home Assistant (dossier `brand/`, Home Assistant 2026.3 ou
+  ultérieur).
 
 ## Développement
 

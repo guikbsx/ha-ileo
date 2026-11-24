@@ -60,7 +60,7 @@ MEMBER_AREA_PATH = "/espaceperso/"
 EXPORT_PATH = "/espaceperso/mes-consommations.aspx"
 EXPORT_DATE_FORMAT = "%d/%m/%Y"
 CONTRACT_FIELD = "switchAbt"
-USER_AGENT = "HomeAssistant-Ileo/0.1 (+https://github.com/guikbsx/ha-ileo)"
+USER_AGENT = "HomeAssistant-Ileo (+https://github.com/guikbsx/ha-ileo)"
 
 DEFAULT_TIMEOUT = 60
 """Maximum duration of a request, in seconds."""

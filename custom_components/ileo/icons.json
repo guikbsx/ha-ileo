@@ -1,0 +1,15 @@
+{
+  "entity": {
+    "sensor": {
+      "index": {
+        "default": "mdi:counter"
+      },
+      "last_day_consumption": {
+        "default": "mdi:water"
+      },
+      "last_reading_date": {
+        "default": "mdi:calendar-check"
+      }
+    }
+  }
+}

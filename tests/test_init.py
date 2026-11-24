@@ -10,7 +10,12 @@ from homeassistant.components.recorder.statistics import get_last_statistics
 from homeassistant.config_entries import SOURCE_REAUTH, ConfigEntryState
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import (
+    device_registry as dr,
+    entity_registry as er,
+    issue_registry as ir,
+)
+from homeassistant.helpers.icon import async_get_icons
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 from pytest_homeassistant_custom_component.components.recorder.common import (
@@ -23,10 +28,12 @@ from custom_components.ileo.const import (
     CONF_PRICE_ENTITY,
     DOMAIN,
 )
+from custom_components.ileo.coordinator import contract_issue_id
 from custom_components.ileo.diagnostics import async_get_config_entry_diagnostics
 from custom_components.ileo.models import (
     IleoAuthError,
     IleoConnectionError,
+    IleoContractError,
     IleoParseError,
 )
 from custom_components.ileo.statistics import statistic_ids
@@ -254,3 +261,54 @@ async def test_diagnostics_when_setup_failed(
     assert diagnostics["state"] == "setup_retry"
     assert diagnostics["coordinator"] is None
     assert EMAIL not in json.dumps(diagnostics, default=str)
+
+
+# --- Repairs --------------------------------------------------------------------
+
+
+async def test_lost_contract_raises_a_repair_issue_until_it_is_back(
+    hass: HomeAssistant, mock_entry: MockConfigEntry, mock_client: AsyncMock
+) -> None:
+    """The user can fix a lost contract: Repairs says so, then forgets it."""
+    issues = ir.async_get(hass)
+    issue_id = contract_issue_id(CONTRACT)
+
+    mock_client.async_get_readings.side_effect = IleoContractError
+    await _setup(hass, mock_entry)
+    assert mock_entry.state is ConfigEntryState.SETUP_RETRY
+    assert "contract" in mock_entry.reason
+    issue = issues.async_get_issue(DOMAIN, issue_id)
+    assert issue is not None
+    assert issue.severity is ir.IssueSeverity.ERROR
+    assert issue.translation_placeholders == {"contract": CONTRACT}
+
+    mock_client.async_get_readings.side_effect = None
+    await hass.config_entries.async_reload(mock_entry.entry_id)
+    await hass.async_block_till_done()
+    assert mock_entry.state is ConfigEntryState.LOADED
+    assert issues.async_get_issue(DOMAIN, issue_id) is None
+
+
+async def test_removing_the_entry_clears_its_repair_issue(
+    hass: HomeAssistant, mock_entry: MockConfigEntry, mock_client: AsyncMock
+) -> None:
+    mock_client.async_get_readings.side_effect = IleoContractError
+    await _setup(hass, mock_entry)
+    issues = ir.async_get(hass)
+    assert issues.async_get_issue(DOMAIN, contract_issue_id(CONTRACT)) is not None
+
+    await hass.config_entries.async_remove(mock_entry.entry_id)
+    await hass.async_block_till_done()
+    assert issues.async_get_issue(DOMAIN, contract_issue_id(CONTRACT)) is None
+
+
+async def test_sensor_icons(
+    hass: HomeAssistant, mock_entry: MockConfigEntry, mock_client: AsyncMock
+) -> None:
+    await _setup(hass, mock_entry)
+    icons = await async_get_icons(hass, "entity", integrations=[DOMAIN])
+    assert set(icons[DOMAIN]["sensor"]) == {
+        "index",
+        "last_day_consumption",
+        "last_reading_date",
+    }

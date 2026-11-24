@@ -101,6 +101,15 @@
     },
     "unexpected_response": {
       "message": "The Iléo portal returned an unexpected response."
+    },
+    "contract_not_found": {
+      "message": "The Iléo account no longer holds contract {contract}."
+    }
+  },
+  "issues": {
+    "contract_not_found": {
+      "title": "Contract {contract} is no longer on this Iléo account",
+      "description": "The stored Iléo account no longer holds contract {contract}: its readings are not fetched any more.\n\nAttach the contract to this account on mel-ileo.fr, or open the menu of the Iléo integration and choose **Reconfigure** to give the account that holds it.\n\nThis alert goes away at the next successful fetch."
     }
   }
 }

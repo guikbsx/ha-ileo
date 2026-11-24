@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from homeassistant.const import CONF_EMAIL, CONF_PASSWORD, Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .api import IleoClient
-from .const import CONF_CONTRACT
-from .coordinator import IleoConfigEntry, IleoCoordinator
+from .const import CONF_CONTRACT, DOMAIN
+from .coordinator import IleoConfigEntry, IleoCoordinator, contract_issue_id
 
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
@@ -35,3 +36,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: IleoConfigEntry) -> bool
 async def async_unload_entry(hass: HomeAssistant, entry: IleoConfigEntry) -> bool:
     """Unload an Iléo config entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: IleoConfigEntry) -> None:
+    """Clean up after a removed entry: its repair issue would have no owner."""
+    ir.async_delete_issue(hass, DOMAIN, contract_issue_id(entry.data[CONF_CONTRACT]))

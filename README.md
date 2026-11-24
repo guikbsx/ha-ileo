@@ -17,6 +17,7 @@ jour par jour, jusque dans le tableau de bord Énergie.**
 [Installation](#installation) ·
 [Configuration](#configuration) ·
 [Statistiques](#statistiques) ·
+[Dépannage](#dépannage) ·
 [Sécurité](#sécurité-et-confidentialité) ·
 [Feuille de route](#feuille-de-route)
 
@@ -98,6 +99,18 @@ des données qui arrivent avec deux jours de retard.
 | **Index du compteur** | L | `device_class: water`, `state_class: total_increasing` |
 | **Consommation du dernier jour** | L | consommation du dernier jour présent dans l'export |
 | **Date du dernier relevé** | date | jour de consommation le plus récent (entité de diagnostic) |
+
+### Compteurs pris en charge
+
+| Situation | Pris en charge |
+| --- | :---: |
+| Compteur **télérelevé** Iléo, avec un compte sur mel-ileo.fr | ✅ |
+| Compte Iléo avec plusieurs contrats | ⚠️ écrit, pas encore validé sur un vrai compte |
+| Compteur Iléo relevé à la main (pas de télérelève) | ❌ le portail n'a pas de données journalières |
+| Autre service d'eau (hors Métropole Européenne de Lille) | ❌ |
+
+Pour savoir si votre compteur est télérelevé, ouvrez « Ma consommation » dans votre espace
+client : s'il affiche une valeur par jour, l'intégration fonctionnera.
 
 ## Installation
 
@@ -188,6 +201,91 @@ L'intégration alimente deux statistiques externes, utilisables dans le tableau 
 
 </details>
 
+## Mise à jour des données
+
+- L'intégration interroge le portail **toutes les 12 heures**, et une première fois dès sa
+  mise en place. Elle ne reçoit rien en direct : c'est toujours elle qui va chercher.
+- Iléo publie les relevés **environ deux jours après** la consommation, et **une seule
+  valeur par jour**. Aucun réglage ne permet d'aller plus vite : c'est le rythme du portail.
+- À chaque passage, elle demande les 180 derniers jours et n'ajoute que les jours nouveaux.
+  Après une longue coupure, l'historique manquant est donc rattrapé tout seul.
+- Pour choisir vous-même le moment de la récupération, désactivez l'interrogation
+  automatique dans les options système de l'intégration, puis appelez l'action
+  `homeassistant.update_entity` sur l'un de ses capteurs depuis une automatisation.
+  Restez raisonnable : le portail est un site public, pas une API.
+
+## Cas d'usage et exemples
+
+- **Suivre sa consommation** jour après jour, semaine après semaine, à côté de
+  l'électricité, dans le tableau de bord Énergie.
+- **Repérer une anomalie** : une journée bien au-dessus de l'habitude peut signaler une
+  fuite ou un robinet resté ouvert.
+- **Connaître sa dépense** avant la facture, avec le prix de l'eau au m³.
+
+Exemple d'automatisation : une notification quand la consommation d'une journée dépasse
+400 litres. Adaptez l'identifiant du capteur à votre installation.
+
+```yaml
+automation:
+  - alias: "Consommation d'eau inhabituelle"
+    triggers:
+      - trigger: numeric_state
+        entity_id: sensor.compteur_d_eau_consommation_du_dernier_jour
+        above: 400
+    actions:
+      - action: persistent_notification.create
+        data:
+          title: "Consommation d'eau inhabituelle"
+          message: >
+            {{ states('sensor.compteur_d_eau_consommation_du_dernier_jour') }} L
+            consommés le {{ states('sensor.compteur_d_eau_date_du_dernier_releve') }}.
+```
+
+Comme les relevés arrivent avec deux jours de retard, cette alerte ne remplace pas un
+détecteur de fuite : elle signale ce qui s'est passé avant-hier.
+
+## Limites connues
+
+- **Une valeur par jour, deux jours après.** Pas de consommation heure par heure ni de
+  débit instantané : dans le tableau de bord Énergie, la vue « jour » montre une seule
+  barre, à minuit.
+- **Le prix n'est pas rétroactif.** Il s'applique aux jours importés après son réglage.
+  L'abonnement annuel n'est pas compté.
+- **L'écoulement permanent** (l'indicateur de fuite du portail) n'est pas repris.
+- **Plusieurs contrats sur un compte** : le choix du contrat est écrit mais n'a pas pu
+  être essayé sur un vrai compte. Tant que le portail ne confirme pas le bon contrat,
+  rien n'est importé.
+- **L'intégration lit un site web**, faute d'API officielle. Si Iléo modifie son espace
+  client, elle peut cesser de fonctionner jusqu'à une mise à jour.
+
+## Dépannage
+
+| Symptôme | Que faire |
+| --- | --- |
+| « Identifiants invalides » | Vérifiez l'e-mail et le mot de passe en vous connectant sur mel-ileo.fr. |
+| « Connexion Iléo expirée » | Le portail refuse le mot de passe enregistré : saisissez le nouveau quand Home Assistant le demande. |
+| « Impossible de joindre le portail Iléo » | Le site est injoignable. L'intégration réessaie seule : rien à faire. |
+| « Réponse inattendue du portail Iléo » | Site en maintenance, ou espace client modifié. Si cela dure plus d'un jour, ouvrez une issue avec le fichier de diagnostics. |
+| Alerte « Le contrat … n'est plus sur ce compte Iléo » | Rattachez le contrat au compte sur mel-ileo.fr, ou utilisez **Reconfigurer** pour indiquer le compte qui le porte. |
+| Capteurs à « Inconnu » juste après l'installation | Le compteur n'a pas encore de relevé publié. Patientez deux jours. |
+| La statistique n'apparaît pas dans le tableau de bord Énergie | Elle est créée au premier relevé importé. Cherchez « Iléo » dans la liste de la section Eau. |
+| Pas de coût | Indiquez un prix de l'eau dans les options de l'intégration. |
+
+Pour un rapport de bug, joignez le **fichier de diagnostics** (menu ⋮ de l'intégration →
+« Télécharger les diagnostics ») : il ne contient aucune donnée personnelle. Vous pouvez
+aussi activer la journalisation de débogage depuis ce même menu, le temps de reproduire
+le problème.
+
+## Désinstallation
+
+1. **Paramètres → Appareils et services → Iléo (MEL)**, menu ⋮ de l'entrée →
+   **Supprimer**. L'appareil et ses capteurs disparaissent.
+2. Dans HACS, ouvrez **Iléo (MEL)** → menu ⋮ → **Supprimer**, puis redémarrez Home
+   Assistant.
+
+Les statistiques déjà importées restent dans la base de Home Assistant. Si vous ne voulez
+plus les voir, retirez la source Eau du tableau de bord Énergie.
+
 ## Sécurité et confidentialité
 
 - **Destination unique.** L'intégration ne communique qu'avec `https://www.mel-ileo.fr`.
@@ -226,8 +324,20 @@ L'intégration alimente deux statistiques externes, utilisables dans le tableau 
   écrit d'après le sélecteur `switchAbt` du tableau de bord mais n'a pas pu être essayé.
   Tant que le portail ne confirme pas le bon contrat, aucune donnée n'est importée.
 - [x] Reconfiguration des identifiants sans supprimer l'intégration.
+- [x] Règles de qualité de Home Assistant suivies jusqu'au niveau Platinum (auto-évaluation).
 - [x] Icône de l'intégration dans Home Assistant (dossier `brand/`, Home Assistant 2026.3 ou
   ultérieur).
+
+## Qualité
+
+L'intégration suit les règles de l'[Integration Quality Scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/)
+de Home Assistant, jusqu'au niveau **Platinum**. L'état de chaque règle est détaillé dans
+[`quality_scale.yaml`](custom_components/ileo/quality_scale.yaml).
+
+C'est une **auto-évaluation** : ce barème n'est attribué officiellement qu'aux intégrations
+incluses dans Home Assistant. Un écart est assumé : le client du portail vit dans
+l'intégration au lieu d'être une bibliothèque publiée à part, comme Home Assistant l'exige
+pour ses intégrations officielles.
 
 ## Développement
 

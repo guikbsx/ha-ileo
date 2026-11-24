@@ -101,6 +101,15 @@
     },
     "unexpected_response": {
       "message": "Le portail Iléo a renvoyé une réponse inattendue."
+    },
+    "contract_not_found": {
+      "message": "Le compte Iléo ne porte plus le contrat {contract}."
+    }
+  },
+  "issues": {
+    "contract_not_found": {
+      "title": "Le contrat {contract} n'est plus sur ce compte Iléo",
+      "description": "Le compte Iléo enregistré ne porte plus le contrat {contract} : ses relevés ne sont plus récupérés.\n\nRattachez le contrat à ce compte sur mel-ileo.fr, ou ouvrez le menu de l'intégration Iléo et choisissez **Reconfigurer** pour indiquer le compte qui le porte.\n\nCette alerte disparaît à la prochaine récupération réussie."
     }
   }
 }

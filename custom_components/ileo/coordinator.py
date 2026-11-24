@@ -12,6 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
@@ -24,7 +25,13 @@ from .const import (
     HISTORY_DAYS,
     UPDATE_INTERVAL,
 )
-from .models import IleoAuthError, IleoConnectionError, IleoError, IleoReading
+from .models import (
+    IleoAuthError,
+    IleoConnectionError,
+    IleoContractError,
+    IleoError,
+    IleoReading,
+)
 from .statistics import DailyDelta, async_import_statistics
 
 _LOGGER = logging.getLogger(__name__)
@@ -62,6 +69,11 @@ def _valid_price(value: Any) -> float | None:
     except TypeError, ValueError:
         return None
     return price if math.isfinite(price) and price >= 0 else None
+
+
+def contract_issue_id(contract: str) -> str:
+    """Id of the repair issue raised when the account lost the contract."""
+    return f"contract_not_found_{contract}"
 
 
 class IleoCoordinator(DataUpdateCoordinator[IleoData]):
@@ -106,6 +118,22 @@ class IleoCoordinator(DataUpdateCoordinator[IleoData]):
             raise ConfigEntryAuthFailed(
                 translation_domain=DOMAIN, translation_key="auth_failed"
             ) from err
+        except IleoContractError as err:
+            # The user can fix this one: say so in Repairs, not only in the log.
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                contract_issue_id(self.contract),
+                is_fixable=False,
+                severity=ir.IssueSeverity.ERROR,
+                translation_key="contract_not_found",
+                translation_placeholders={"contract": self.contract},
+            )
+            raise UpdateFailed(
+                translation_domain=DOMAIN,
+                translation_key="contract_not_found",
+                translation_placeholders={"contract": self.contract},
+            ) from err
         except IleoError as err:
             _LOGGER.debug("Fetching the Iléo export failed: %s", err)
             raise UpdateFailed(
@@ -116,6 +144,8 @@ class IleoCoordinator(DataUpdateCoordinator[IleoData]):
                     else "unexpected_response"
                 ),
             ) from err
+
+        ir.async_delete_issue(self.hass, DOMAIN, contract_issue_id(self.contract))
 
         # A day dated in the future would block the incremental import until then.
         readings = [reading for reading in readings if reading.day <= today]

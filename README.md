@@ -361,15 +361,19 @@ propose alors ce numéro aux utilisateurs.
 
 | Fichier | Rôle |
 | --- | --- |
+| `__init__.py` | mise en place et retrait d'une entrée |
+| `const.py` | constantes (domaine, intervalle de mise à jour, profondeur d'historique) |
 | `api.py` | client du portail (connexion, contrats, export) — sans dépendance à Home Assistant |
 | `parser.py` | lecture de l'export CSV — sans dépendance à Home Assistant |
 | `models.py` | contrat, relevé journalier et exceptions du client |
 | `statistics.py` | calcul des consommations journalières et import des statistiques |
 | `coordinator.py` | mise à jour toutes les 12 h |
-| `config_flow.py` | configuration, choix du contrat, ré-authentification et options |
+| `config_flow.py` | configuration, choix du contrat, ré-authentification, reconfiguration et options |
 | `entity.py` | entité de base (appareil « Compteur d'eau ») |
 | `sensor.py` | capteurs |
 | `diagnostics.py` | diagnostics téléchargeables, données personnelles masquées |
+| `icons.json`, `translations/`, `brand/` | icônes des capteurs, textes en français et en anglais, icône de l'intégration |
+| `quality_scale.yaml` | état de chaque règle de qualité de Home Assistant |
 
 Les fixtures `tests/fixtures/` mêlent extraits réels anonymisés et fichiers synthétiques
 (voir leur README).

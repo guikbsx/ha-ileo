@@ -17,6 +17,7 @@ jour par jour, jusque dans le tableau de bord Énergie.**
 [Installation](#installation) ·
 [Configuration](#configuration) ·
 [Statistiques](#statistiques) ·
+[Conception](docs/conception.md) ·
 [Dépannage](#dépannage) ·
 [Sécurité](#sécurité-et-confidentialité) ·
 [Feuille de route](#feuille-de-route)
@@ -201,6 +202,9 @@ L'intégration alimente deux statistiques externes, utilisables dans le tableau 
 
 </details>
 
+Le choix des statistiques externes et de la somme en cumul d'écarts est expliqué dans
+[docs/conception.md](docs/conception.md).
+
 ## Mise à jour des données
 
 - L'intégration interroge le portail **toutes les 12 heures**, et une première fois dès sa
@@ -383,8 +387,13 @@ Les fixtures `tests/fixtures/` mêlent extraits réels anonymisés et fichiers s
 ## Remerciements et licence
 
 Le principe (connexion à l'espace client puis export CSV) s'inspire de l'intégration
-communautaire [hal01/ileo_direct](https://github.com/hal01/ileo_direct). Aucun code n'en a
-été repris : ce projet est une réécriture indépendante.
+communautaire [hal01/ileo_direct](https://github.com/hal01/ileo_direct), elle-même précédée
+du [scraper de pbranly](https://github.com/pbranly/ILEO-home-assistant-scraper) et d'une
+configuration `multiscrape` partagée sur le forum. Aucun code n'en a été repris : ce projet
+est une réécriture indépendante.
+
+Le détail de ces solutions, les deux problèmes qu'elles laissaient ouverts et les choix de
+conception qui en découlent sont racontés dans [docs/conception.md](docs/conception.md).
 
 Distribué sous licence [MIT](LICENSE).
 
